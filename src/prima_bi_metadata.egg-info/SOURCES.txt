@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/prima_bi_metadata/__init__.py
+src/prima_bi_metadata/config.py
+src/prima_bi_metadata/main.py
+src/prima_bi_metadata/storage.py
+src/prima_bi_metadata/transform.py
+src/prima_bi_metadata.egg-info/PKG-INFO
+src/prima_bi_metadata.egg-info/SOURCES.txt
+src/prima_bi_metadata.egg-info/dependency_links.txt
+src/prima_bi_metadata.egg-info/top_level.txt
+tests/test_check_db.py
+tests/test_show_schema.py

@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "dash-001",
+      "name": "Sales Overview",
+      "owner": "alice@example.com",
+      "updated_at": "2026-03-01T12:00:00Z",
+      "last_viewed": "2026-03-18T09:30:00Z",
+      "views_last_30d": 120,
+      "last_refresh": "2026-03-18T02:00:00Z",
+      "refresh_status": "success"
+    },
+    {
+      "id": "dash-002",
+      "name": "Finance KPIs",
+      "owner": "bob@example.com",
+      "updated_at": "2026-01-10T08:00:00Z",
+      "last_viewed": null,
+      "views_last_30d": 0,
+      "last_refresh": "2026-03-17T02:00:00Z",
+      "refresh_status": "failed"
+    }
+  ]
+}

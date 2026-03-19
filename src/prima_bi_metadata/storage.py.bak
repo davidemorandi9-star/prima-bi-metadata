@@ -1,0 +1,64 @@
+from sqlalchemy import create_engine, Table, Column, String, Integer, DateTime, MetaData, select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+import pandas as pd
+from typing import Optional
+from .config import settings
+
+metadata = MetaData()
+
+metadata_table = Table(
+    "metadata",
+    metadata,
+    Column("asset_id", String, primary_key=True),
+    Column("asset_name", String),
+    Column("owner", String),
+    Column("last_updated", DateTime),
+    Column("last_viewed", DateTime),
+    Column("views_last_30d", Integer),
+    Column("last_refresh", DateTime),
+    Column("refresh_status", String),
+    Column("status", String),
+    Column("last_synced_at", DateTime),
+)
+
+def get_engine(db_url: Optional[str] = None):
+    db_url = db_url or settings.DB_URL
+    engine = create_engine(db_url, future=True)
+    return engine
+
+def ensure_tables(engine):
+    metadata.create_all(engine)
+
+def upsert_dataframe(engine, df: pd.DataFrame):
+    if df.empty:
+        return 0
+    conn = engine.connect()
+    dialect = engine.dialect.name
+    inserted = 0
+    try:
+        for _, row in df.iterrows():
+            record = row.to_dict()
+            if dialect == "sqlite":
+                stmt = sqlite_insert(metadata_table).values(**record)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["asset_id"],
+                    set_={k: stmt.excluded[k] for k in record.keys() if k != "asset_id"}
+                )
+                conn.execute(stmt)
+            elif dialect in ("postgresql", "postgres"):
+                stmt = pg_insert(metadata_table).values(**record)
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=["asset_id"],
+                    set_={k: stmt.excluded[k] for k in record.keys() if k != "asset_id"}
+                )
+                conn.execute(stmt)
+            else:
+                # fallback: try delete+insert (not ideal for concurrency)
+                conn.execute(metadata_table.delete().where(metadata_table.c.asset_id == record["asset_id"]))
+                conn.execute(metadata_table.insert().values(**record))
+            inserted += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return inserted

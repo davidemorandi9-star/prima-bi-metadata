@@ -1,20 +1,9 @@
-[project]
+[tool.poetry]
 name = "prima-bi-metadata"
 version = "0.1.0"
-description = ""
-authors = [
-    {name = "Davide",email = "davidemorandi9@gmail.com"}
-]
-requires-python = ">=3.13"
-dependencies = [
-    "requests (>=2.32.5,<3.0.0)",
-    "pandas (>=3.0.1,<4.0.0)",
-    "sqlalchemy (>=2.0.48,<3.0.0)",
-    "python-dotenv (>=1.2.2,<2.0.0)",
-    "retrying (>=1.4.2,<2.0.0)"
-]
+description = "BI metadata pipeline"
+authors = ["Davide <tuo@email>"]
 
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"
+packages = [
+  { include = "prima_bi_metadata", from = "src" }
+]
