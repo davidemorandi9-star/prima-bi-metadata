@@ -141,6 +141,10 @@ python -m http.server 8000
 bash
 poetry run python -m prima_bi_metadata.main
 
+### To inspect the database without installing SQLite, run:
+
+bash
+poetry run python scripts/show_db.py
 
 ---
 
