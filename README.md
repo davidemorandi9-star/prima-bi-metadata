@@ -19,19 +19,22 @@ The goal of this project is to maintain an up-to-date local metadata store by fe
 
 ## Architecture
 
+```text
 prima-bi-metadata/
 ├── src/prima_bi_metadata/
-│   ├── config.py          # Configuration management
-│   ├── main.py            # ETL orchestration
-│   ├── transform.py       # Data normalization
-│   └── storage.py         # Database operations
+│   ├── config.py           # Configuration management
+│   ├── main.py             # ETL orchestration
+│   ├── transform.py        # Data normalization
+│   └── storage.py          # Database operations
 ├── data/
-│   └── sample_data.json   # Sample input data
+│   └── sample_data.json    # Sample input data
 ├── tests/
-│   ├── test_check_db.py   # Database upsert tests
+│   ├── test_check_db.py    # Database upsert tests
 │   └── test_show_schema.py # Schema validation tests
-├── metadata.db            # SQLite database
-└── pyproject.toml         # Dependencies and project config
+├── metadata.db             # SQLite database
+└── pyproject.toml          # Dependencies and project config
+```
+
 
 ### Components
 - **Configuration**: Managed through environment variables  
@@ -68,7 +71,7 @@ prima-bi-metadata/
 ---
 
 ## Database Schema
-
+```text
 sql
 CREATE TABLE metadata (
     asset_id VARCHAR NOT NULL PRIMARY KEY,
@@ -82,7 +85,7 @@ CREATE TABLE metadata (
     status VARCHAR,
     last_synced_at DATETIME
 );
-
+```
 
 ---
 
@@ -123,11 +126,11 @@ poetry install
 ### Configuration
 Create a .env file in the project root:
 
-
+```text
 BI_API_BASE=http://localhost:8000/data/sample_data.json
 DB_URL=sqlite:///metadata.db
 LOG_LEVEL=INFO
-
+```
 
 ### Serve the sample data
 Start a local HTTP server in the project root:
