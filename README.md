@@ -1,96 +1,174 @@
 ## PRIMA‑BI‑METADATA
 
-PRIMA‑BI‑METADATA is a lightweight ETL pipeline that ingests BI metadata, normalizes it into a structured internal model, and persists it into a local SQLite database using an idempotent upsert strategy. The project follows a modular architecture inspired by the original design document and supports incremental, repeatable data refreshes.
-
----
-
-## Table of Contents
-- [Project Overview](#project-overview)
-- [Architecture and Responsibilities](#architecture-and-responsibilities)
-- [Data Flow](#data-flow)
-- [Database Schema](#database-schema)
-- [What Has Been Implemented](#what-has-been-implemented)
-- [Running the Pipeline](#running-the-pipeline)
-- [Running Tests](#running-tests)
-- [Next Steps](#next-steps)
-
----
+PRIMA‑BI‑METADATA is a lightweight ETL pipeline that ingests BI metadata, normalizes it into a structured internal model, and persists it into a local SQLite database using an idempotent upsert strategy. The project follows a modular architecture and supports incremental, repeatable data refreshes.
 
 ### Project Overview
 
-The goal of this project is to maintain an up‑to‑date local metadata store by fetching BI metadata from an external source, transforming it into a clean and consistent internal representation, and writing it into a SQLite database. The system is designed to be simple, reliable, and easy to extend.
+The goal of this project is to maintain an up‑to‑date local metadata store by fetching BI metadata from an external source (API or JSON file), transforming it into a clean and consistent internal representation, and writing it into a SQLite database. The pipeline is designed to be simple, reliable, and easy to extend.
 
-The pipeline consists of three main phases:
-
-- **Fetch** — Retrieve metadata from a JSON endpoint or API.  
-- **Transform** — Normalize and validate the raw data.  
-- **Upsert** — Insert or update rows in the `metadata` table using conflict resolution.
+Key features:
+- **Modular design**: Separate concerns for fetching, transforming, and storing data
+- **Idempotent operations**: Safe to run multiple times without duplicates
+- **Error handling**: Retry logic for network requests, comprehensive logging
+- **Configuration**: Environment-based settings for API endpoints and credentials
 
 ---
 
-### Architecture and Responsibilities
+### Architecture
 
 The repository is organized into clear, single‑responsibility modules:
 
+```
 prima-bi-metadata/
-│
 ├── src/prima_bi_metadata/
-│   ├── config.py
-│   ├── main.py
-│   ├── transform.py
-│   ├── storage.py
-│   └── init.py
-│
+│   ├── config.py          # Configuration management
+│   ├── main.py            # ETL orchestration
+│   ├── transform.py       # Data normalization
+│   └── storage.py         # Database operations
 ├── data/
-│   └── sample_data.json
-│
-├── metadata.db
+│   └── sample_data.json   # Sample input data
 ├── tests/
-├── README.md
-└── pyproject.toml
+│   ├── test_check_db.py   # Database upsert tests
+│   └── test_show_schema.py # Schema validation tests
+├── metadata.db            # SQLite database
+└── pyproject.toml         # Dependencies and project config
+```
 
-
-
-#### Module descriptions
-
-- **`config.py`** — Centralizes configuration such as API base URL and logging level.  
-- **`main.py`** — Orchestrates the ETL workflow: fetch → transform → upsert.  
-- **`transform.py`** — Converts raw JSON into a normalized DataFrame, handling missing values and type coercion.  
-- **`storage.py`** — Performs safe, idempotent upserts into SQLite, including timestamp serialization and integer normalization.  
-- **`metadata.db`** — Local SQLite database storing the `metadata` table.  
-- **`tests/`** — Contains schema and upsert tests.  
-- **Utility scripts** (`show_schema.py`, `check_db.py`) — Used during development for database inspection.
+- **Configuration**: Managed through environment variables in `.env` file
+- **Logging**: Structured logging with configurable levels
+- **Database**: SQLite with SQLAlchemy for ORM operations
+- **Dependencies**: Managed via Poetry with `pyproject.toml`
 
 ---
 
 ### Data Flow
 
 #### 1. Fetch
-`main.py` retrieves metadata from a configured endpoint.  
-The system logs the request, response status, and number of records fetched.
+`main.py` retrieves metadata from a configured endpoint:
+- Supports both paginated APIs and single JSON files
+- Handles authentication via Bearer tokens
+- Implements retry logic with exponential backoff
+- Logs request details and record counts
 
 #### 2. Transform
-`transform.py` processes the raw payload into a clean DataFrame:
-- consistent field names  
-- conversion of missing values  
-- integer coercion  
-- timestamp normalization  
-- validation of required fields  
+`transform.py` normalizes raw JSON into a clean DataFrame:
+- Maps API fields to internal schema
+- Handles missing/null values
+- Parses and normalizes timestamps
+- Derives status fields (active/stale/failed_refresh)
+- Validates data types and formats
 
 #### 3. Upsert
-`storage.py` writes the transformed data into SQLite using a bulk upsert:
-- `NaN` → `None`  
-- timestamps → ISO 8601 strings  
-- integers coerced safely  
-- `ON CONFLICT(asset_id) DO UPDATE` ensures idempotency  
-- safe transaction handling  
-- logs number of inserted/updated rows  
+`storage.py` writes transformed data into SQLite:
+- Bulk insert/update operations
+- `ON CONFLICT` clause ensures idempotency
+- Safe type conversion (NaN→None, timestamps→ISO strings)
+- Transaction handling for data integrity
+- Returns count of processed records
 
 ---
 
 ### Database Schema
 
-The `metadata` table is defined as follows:
+The `metadata` table stores BI asset information:
+
+```sql
+CREATE TABLE metadata (
+    asset_id VARCHAR NOT NULL PRIMARY KEY,
+    asset_name VARCHAR,
+    owner VARCHAR,
+    last_updated DATETIME,
+    last_viewed DATETIME,
+    views_last_30d INTEGER,
+    last_refresh DATETIME,
+    refresh_status VARCHAR,
+    status VARCHAR,
+    last_synced_at DATETIME
+);
+```
+
+**Field descriptions:**
+- `asset_id`: Unique identifier for the BI asset
+- `asset_name`: Human-readable name
+- `owner`: Email or identifier of the asset owner
+- `last_updated`: When the asset was last modified
+- `last_viewed`: When the asset was last accessed
+- `views_last_30d`: Number of views in the last 30 days
+- `last_refresh`: Timestamp of last data refresh
+- `refresh_status`: Status of the refresh operation
+- `status`: Derived status (active/stale/failed_refresh)
+- `last_synced_at`: When this record was last synced
+
+---
+
+### What Has Been Implemented
+
+**Complete ETL Pipeline**
+- Fetch from API/JSON with pagination support
+- Data transformation and validation
+- Idempotent database storage
+
+**Core Modules**
+- `config.py`: Environment-based configuration
+- `main.py`: Pipeline orchestration with error handling
+- `transform.py`: Data normalization and mapping
+- `storage.py`: Database operations with upsert logic
+
+**Quality Assurance**
+- Comprehensive test suite for database operations
+- Sample data for testing and development
+- Logging and error handling throughout
+
+**Infrastructure**
+- SQLite database with proper schema
+- Dependency management via `pyproject.toml`
+- Environment configuration support
+
+---
+
+### Running the Pipeline
+
+#### Prerequisites
+
+View pyproject.toml
+
+#### Setup
+Install dependencies with Poetry:
+```bash
+poetry install
+```
+
+#### Configuration
+Create a `.env` file in the project root:
+```
+BI_API_BASE=http://localhost:8000/data/sample_data.json
+BI_API_KEY=
+DB_URL=sqlite:///metadata.db
+LOG_LEVEL=INFO
+```
+
+#### Execution
+
+For development with sample data, you need to:
+
+1. Start a local HTTP server in the project root:
+```bash
+python -m http.server 8000
+```
+
+2. Set `BI_API_BASE` in your `.env` file to:
+```
+BI_API_BASE=http://localhost:8000/data/sample_data.json
+```
+
+This serves the `sample_data.json` file via HTTP, which the pipeline will fetch and process.
+
+Run the full pipeline:
+```bash
+poetry run python -m prima_bi_metadata.main
+
+
+### Database Schema
 
 ```sql
 CREATE TABLE metadata (
@@ -106,52 +184,3 @@ CREATE TABLE metadata (
     last_synced_at DATETIME,
     PRIMARY KEY (asset_id)
 );
-
-
-### What Has Been Implemented
-
-The following components have been fully developed based on the original design document and the work completed during implementation:
-
-- **End‑to‑end ETL pipeline** including fetch, transform, and upsert stages.
-- **Complete rewrite of the storage layer**, ensuring:
-  - correct handling of missing values (`NaN → None`)
-  - safe serialization of timestamps into ISO 8601 strings
-  - integer coercion for numeric fields
-  - SQLAlchemy‑compatible bulk execution
-  - idempotent updates using `ON CONFLICT`
-- **Detailed logging** across all stages for easier debugging and observability.
-- **Validation of the database schema** using development scripts (`show_schema.py`, `check_db.py`).
-- **Successful execution of the pipeline** using sample data, confirming correct insertion and update behavior.
-- **Initial test suite** including:
-  - schema validation tests
-  - upsert behavior tests using a temporary SQLite database
-- **Environment setup improvements**, including:
-  - identifying Python version constraints in `pyproject.toml`
-  - running tests in an isolated virtual environment
-
----
-
-### Running the Pipeline
-
-You can run the full ETL pipeline using Poetry:
-
-bash
-poetry run python -m prima_bi_metadata.main
-
-Or using a standalone Python environment:
-bash
-
-python -m prima_bi_metadata.main
-
-Running Tests
-
-To run the test suite in an isolated environment:
-bash
-
-python -m venv .venv-test
-.\.venv-test\Scripts\Activate.ps1
-pip install -e .
-pip install pytest sqlalchemy pandas
-pytest -q
-
-This setup ensures that all dependencies required for testing are available without modifying the main project environment.

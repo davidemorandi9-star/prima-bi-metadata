@@ -70,6 +70,11 @@ def fetch_all_metadata():
     logger.info("Fetched %d records", len(all_records))
     return all_records
 
+def fetch_local_json(path: str):
+    import json
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 def run():
     logger.info("Run started")
     try:
